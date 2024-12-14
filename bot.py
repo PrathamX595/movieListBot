@@ -69,5 +69,20 @@ async def add(ctx):
     else:
         await ctx.send("404: No list found for this server, create a list by [/init] ")
 
+@bot.command()
+async def remove(ctx):
+    collections = db.list_collection_names()
+    if ctx.guild.name in collections:
+        col = db.get_collection(ctx.guild.name)
+        if ctx.message:
+            try:
+                res = col.find_one_and_delete(ctx.message)
+                await ctx.send("movie deleted!", res)
+            except Exception as e:
+                await ctx.send(f"An error occurred: {e}")
+        else:
+            await ctx.send("give a movie name")
+    else:
+        await ctx.send("404: No list found for this server, create a list by [/init] ")
 
 bot.run(os.getenv('TOKEN'))
