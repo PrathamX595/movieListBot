@@ -22,18 +22,34 @@ async def init(ctx):
     if ctx.guild.name in collections:
         await ctx.send("list already exists")
     else:
-        global col 
-        col = db.create_collection(ctx.guild.name)
-        await ctx.send("List created")
+        try:
+            global col
+            col = db.create_collection(ctx.guild.name)
+            await ctx.send("List created")
+        except Exception as e:
+            await ctx.send(f"An error occurred: {e}")
 
 @bot.command()
-async def list(ctx):
+async def list(ctx, gen):
     collections = db.list_collection_names()
     if ctx.guild.name in collections:
-        data = col.find()
-        if data:
-            ctx.send(data)       #TODO:parse in a readable format
+        col = db.get_collection(ctx.guild.name)
+        if gen:
+            pipeline = [
+                {"$match": {"genre": gen}}
+            ]
+            data = col.aggregate(pipeline)
+            if data:
+                ctx.send(data)       #TODO:parse in a readable format
+            else:
+                ctx.send("no movies found")
         else:
-            ctx.send("no movies found")
+            data = col.find()
+            if data:
+                ctx.send(data)       #TODO:parse in a readable format
+            else:
+                ctx.send("no movies found")
+    else:
+        ctx.send("404: No list found for this server, create a list by [/init] ")
 
 bot.run(os.getenv('TOKEN'))
