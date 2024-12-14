@@ -30,26 +30,44 @@ async def init(ctx):
             await ctx.send(f"An error occurred: {e}")
 
 @bot.command()
-async def list(ctx, gen):
+async def list(ctx):
     collections = db.list_collection_names()
     if ctx.guild.name in collections:
         col = db.get_collection(ctx.guild.name)
-        if gen:
+        if ctx.message:
             pipeline = [
-                {"$match": {"genre": gen}}
+                {"$match": {"genre": ctx.message}}
             ]
             data = col.aggregate(pipeline)
             if data:
-                ctx.send(data)       #TODO:parse in a readable format
+                await ctx.send(data)       #TODO:parse in a readable format
             else:
-                ctx.send("no movies found")
+                await ctx.send("no movies found")
         else:
             data = col.find()
             if data:
-                ctx.send(data)       #TODO:parse in a readable format
+                await ctx.send(data)       #TODO:parse in a readable format
             else:
-                ctx.send("no movies found")
+                await ctx.send("no movies found")
     else:
-        ctx.send("404: No list found for this server, create a list by [/init] ")
+       await ctx.send("404: No list found for this server, create a list by [/init] ")
+
+@bot.command()
+async def add(ctx):
+    collections = db.list_collection_names()
+    if ctx.guild.name in collections:
+        col = db.get_collection(ctx.guild.name)
+        if ctx.message:
+            movie = {"name": ctx.message, "genere": ctx.message}
+            try:
+                res = col.insert_one(movie)
+                await ctx.send("movie added!", res)
+            except Exception as e:
+                await ctx.send(f"An error occurred: {e}")
+        else:
+            await ctx.send("give a movie name with the proper genere")
+    else:
+        await ctx.send("404: No list found for this server, create a list by [/init] ")
+
 
 bot.run(os.getenv('TOKEN'))
