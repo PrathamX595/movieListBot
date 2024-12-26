@@ -1,1 +1,1 @@
-Just a bot to recommend movies :)
+Just a bot to list movies for you and your friends:)
