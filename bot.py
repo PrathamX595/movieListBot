@@ -3,6 +3,7 @@ from discord.ext import commands
 import dotenv
 import os
 import pymongo
+
 dotenv.load_dotenv()
 
 mongoClient = pymongo.MongoClient(os.getenv('MONGO'))
@@ -20,69 +21,65 @@ async def on_ready():
 async def init(ctx):
     collections = db.list_collection_names()
     if ctx.guild.name in collections:
-        await ctx.send("list already exists")
+        await ctx.send("List already exists")
     else:
         try:
-            global col
             col = db.create_collection(ctx.guild.name)
             await ctx.send("List created")
         except Exception as e:
             await ctx.send(f"An error occurred: {e}")
 
 @bot.command()
-async def list(ctx):
+async def list_movies(ctx, gen: str = None):
     collections = db.list_collection_names()
     if ctx.guild.name in collections:
         col = db.get_collection(ctx.guild.name)
-        if ctx.message:
-            pipeline = [
-                {"$match": {"genre": ctx.message}}
-            ]
-            data = col.aggregate(pipeline)
+        if gen:
+            pipeline = [{"$match": {"genre": gen}}]
+            data = list(col.aggregate(pipeline))
             if data:
-                await ctx.send(data)       #TODO:parse in a readable format
+                movies = "\n".join([movie['name'] for movie in data])
+                await ctx.send(f"**Movies in genre '{gen}':**\n{movies}")
             else:
-                await ctx.send("no movies found")
+                await ctx.send(f"No movies found in genre '{gen}'.")
         else:
-            data = col.find()
+            data = list(col.find())
             if data:
-                await ctx.send(data)       #TODO:parse in a readable format
+                movies = "\n".join([movie['name'] for movie in data])
+                await ctx.send(f"**All Movies:**\n{movies}")
             else:
-                await ctx.send("no movies found")
+                await ctx.send("No movies found.")
     else:
-       await ctx.send("404: No list found for this server, create a list by [/init] ")
+        await ctx.send("404: No list found for this server, create a list by [/init].")
 
 @bot.command()
-async def add(ctx):
+async def add(ctx, movie_name: str, genre: str = None):
     collections = db.list_collection_names()
     if ctx.guild.name in collections:
         col = db.get_collection(ctx.guild.name)
-        if ctx.message:
-            movie = {"name": ctx.message, "genere": ctx.message}
-            try:
-                res = col.insert_one(movie)
-                await ctx.send("movie added!", res)
-            except Exception as e:
-                await ctx.send(f"An error occurred: {e}")
-        else:
-            await ctx.send("give a movie name with the proper genere")
+        movie = {"name": movie_name, "genre": genre}
+        try:
+            res = col.insert_one(movie)
+            await ctx.send(f"Movie '{movie_name}' added successfully!")
+        except Exception as e:
+            await ctx.send(f"An error occurred: {e}")
     else:
-        await ctx.send("404: No list found for this server, create a list by [/init] ")
+        await ctx.send("404: No list found for this server, create a list by [/init].")
 
 @bot.command()
-async def remove(ctx):
+async def remove(ctx, movie_name: str):
     collections = db.list_collection_names()
     if ctx.guild.name in collections:
         col = db.get_collection(ctx.guild.name)
-        if ctx.message:
-            try:
-                res = col.find_one_and_delete(ctx.message)
-                await ctx.send("movie deleted!", res)
-            except Exception as e:
-                await ctx.send(f"An error occurred: {e}")
-        else:
-            await ctx.send("give a movie name")
+        try:
+            res = col.find_one_and_delete({"name": movie_name})
+            if res:
+                await ctx.send(f"Movie '{movie_name}' deleted successfully!")
+            else:
+                await ctx.send(f"Movie '{movie_name}' not found.")
+        except Exception as e:
+            await ctx.send(f"An error occurred: {e}")
     else:
-        await ctx.send("404: No list found for this server, create a list by [/init] ")
+        await ctx.send("404: No list found for this server, create a list by [/init].")
 
 bot.run(os.getenv('TOKEN'))
